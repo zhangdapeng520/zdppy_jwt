@@ -6,7 +6,7 @@
 # @File    : main.py
 # @Software: PyCharm
 # @Description: 文档描述
-#!/usr/bin/env python
+# !/usr/bin/env python
 # -*- coding: utf-8 -*-
 # @Time    : 2022/6/30 10:06
 # @Author  : 张大鹏
@@ -30,6 +30,10 @@ from zdppy_jwt.jose import JWTError, jwt
 from zdppy_jwt.passlib.context import CryptContext
 from pydantic import BaseModel
 
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+app = Api()
+
 # 生成秘钥的方式：openssl rand -hex 32
 SECRET_KEY = "09d25e094faa6ca2556c818166b7a9563b93f7099f6f0f4caa6cf63b88e8d3e7"
 ALGORITHM = "HS256"
@@ -40,7 +44,8 @@ fake_users_db = {
         "username": "zhangdapeng",
         "full_name": "John Doe",
         "email": "johndoe@example.com",
-        "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",  # 明文密码是secret
+        # "hashed_password": "$2b$12$EixZaYVK1fsbw1ZfbX3OXePaWxn96p36WQoeG6Lruj3vjPGga31lW",  # 明文密码是secret
+        "hashed_password": pwd_context.hash(secret="zhangdapeng"),  # 密码加密方式
         "disabled": False,
     }
 }
@@ -64,13 +69,6 @@ class User(BaseModel):
 
 class UserInDB(User):
     hashed_password: str
-
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
-
-app = Api()
 
 
 def verify_password(plain_password, hashed_password):
