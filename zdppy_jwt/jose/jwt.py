@@ -2,6 +2,7 @@ import json
 from calendar import timegm
 from collections.abc import Mapping
 from datetime import datetime, timedelta
+from typing import Dict, Union
 
 from zdppy_jwt.jose import jws
 
@@ -10,106 +11,43 @@ from .exceptions import ExpiredSignatureError, JWSError, JWTClaimsError, JWTErro
 from .utils import calculate_at_hash, timedelta_total_seconds
 
 
-def encode(claims, key, algorithm=ALGORITHMS.HS256, headers=None, access_token=None):
-    """Encodes a claims set and returns a JWT string.
-
-    JWTs are JWS signed objects with a few reserved claims.
-
-    Args:
-        claims (dict): A claims set to sign
-        key (str or dict): The key to use for signing the claim set. Can be
-            individual JWK or JWK set.
-        algorithm (str, optional): The algorithm to use for signing the
-            the claims.  Defaults to HS256.
-        headers (dict, optional): A set of headers that will be added to
-            the default headers.  Any headers that are added as additional
-            headers will override the default headers.
-        access_token (str, optional): If present, the 'at_hash' claim will
-            be calculated and added to the claims present in the 'claims'
-            parameter.
-
-    Returns:
-        str: The string representation of the header, claims, and signature.
-
-    Raises:
-        JWTError: If there is an error encoding the claims.
-
-    Examples:
-
-        >>> jwt.encode({'a': 'b'}, 'secret', algorithm='HS256')
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoiYiJ9.jiMyrsmD8AoHWeQgmxZ5yq8z0lXS67_QGs52AzC8Ru8'
-
+def encode(claims: Dict, key: str, algorithm: str = ALGORITHMS.HS256, headers: Dict = None,
+           access_token: str = None) -> str:
     """
-
+    对声明集进行编码并返回一个JWT字符串。
+    JWTs是带有一些保留声明的JWS签名对象。
+    claims：要加密的内容字典，包含token的主要内容
+    key：用于加密的秘钥
+    algorithm: 加密算法，默认是HS256
+    headers: 请求头集合
+    access_token: 如果存在，将被计算并添加到'claims'参数中
+    示例: jwt.encode({'a': 'b'}, 'secret', algorithm='HS256')
+    """
+    # 转换日期格式
     for time_claim in ["exp", "iat", "nbf"]:
-
-        # Convert datetime to a intDate value in known time-format claims
         if isinstance(claims.get(time_claim), datetime):
             claims[time_claim] = timegm(claims[time_claim].utctimetuple())
 
+    # 计算token
     if access_token:
         claims["at_hash"] = calculate_at_hash(access_token, ALGORITHMS.HASHES[algorithm])
 
+    # 生成jwt token
     return jws.sign(claims, key, headers=headers, algorithm=algorithm)
 
 
-def decode(token, key, algorithms=None, options=None, audience=None, issuer=None, subject=None, access_token=None):
-    """Verifies a JWT string's signature and validates reserved claims.
+def decode(token: str, key: str, algorithms: Union[str, list] = None, options=None, audience=None, issuer=None,
+           subject=None,
+           access_token=None) -> Dict:
+    """
+    验证JWT字符串的签名并验证保留的声明。
+    token: JWT生成的token
+    key: 加密的秘钥
+    algorithms: 签名算法
 
-    Args:
-        token (str): A signed JWS to be verified.
-        key (str or dict): A key to attempt to verify the payload with. Can be
-            individual JWK or JWK set.
-        algorithms (str or list): Valid algorithms that should be used to verify the JWS.
-        audience (str): The intended audience of the token.  If the "aud" claim is
-            included in the claim set, then the audience must be included and must equal
-            the provided claim.
-        issuer (str or iterable): Acceptable value(s) for the issuer of the token.
-            If the "iss" claim is included in the claim set, then the issuer must be
-            given and the claim in the token must be among the acceptable values.
-        subject (str): The subject of the token.  If the "sub" claim is
-            included in the claim set, then the subject must be included and must equal
-            the provided claim.
-        access_token (str): An access token string. If the "at_hash" claim is included in the
-            claim set, then the access_token must be included, and it must match
-            the "at_hash" claim.
-        options (dict): A dictionary of options for skipping validation steps.
-
-            defaults = {
-                'verify_signature': True,
-                'verify_aud': True,
-                'verify_iat': True,
-                'verify_exp': True,
-                'verify_nbf': True,
-                'verify_iss': True,
-                'verify_sub': True,
-                'verify_jti': True,
-                'verify_at_hash': True,
-                'require_aud': False,
-                'require_iat': False,
-                'require_exp': False,
-                'require_nbf': False,
-                'require_iss': False,
-                'require_sub': False,
-                'require_jti': False,
-                'require_at_hash': False,
-                'leeway': 0,
-            }
-
-    Returns:
-        dict: The dict representation of the claims set, assuming the signature is valid
-            and all requested data validation passes.
-
-    Raises:
-        JWTError: If the signature is invalid in any way.
-        ExpiredSignatureError: If the signature has expired.
-        JWTClaimsError: If any claim is invalid in any way.
-
-    Examples:
-
-        >>> payload = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoiYiJ9.jiMyrsmD8AoHWeQgmxZ5yq8z0lXS67_QGs52AzC8Ru8'
-        >>> jwt.decode(payload, 'secret', algorithms='HS256')
-
+    示例:
+    payload = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJhIjoiYiJ9.jiMyrsmD8AoHWeQgmxZ5yq8z0lXS67_QGs52AzC8Ru8'
+    jwt.decode(payload, 'secret', algorithms='HS256')
     """
 
     defaults = {
@@ -164,7 +102,8 @@ def decode(token, key, algorithms=None, options=None, audience=None, issuer=None
         options=defaults,
     )
 
-    return claims
+    # return claims
+    return dict(claims)
 
 
 def get_unverified_header(token):
@@ -456,12 +395,11 @@ def _validate_at_hash(claims, access_token, algorithm):
 
 
 def _validate_claims(claims, audience=None, issuer=None, subject=None, algorithm=None, access_token=None, options=None):
-
     leeway = options.get("leeway", 0)
 
     if isinstance(leeway, timedelta):
         leeway = timedelta_total_seconds(leeway)
-    required_claims = [e[len("require_") :] for e in options.keys() if e.startswith("require_") and options[e]]
+    required_claims = [e[len("require_"):] for e in options.keys() if e.startswith("require_") and options[e]]
     for require_claim in required_claims:
         if require_claim not in claims:
             raise JWTError('missing required key "%s" among claims' % require_claim)

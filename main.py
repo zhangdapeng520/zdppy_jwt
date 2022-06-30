@@ -52,23 +52,35 @@ fake_users_db = {
 
 
 class Token(BaseModel):
-    access_token: str
-    token_type: str
+    """
+    用于返回token信息
+    """
+    access_token: str  # token值
+    token_type: str  # token类型
 
 
 class TokenData(BaseModel):
-    username: Union[str, None] = None
+    """
+    token内容
+    """
+    username: Union[str, None] = None  # 用户名
 
 
 class User(BaseModel):
-    username: str
-    email: Union[str, None] = None
-    full_name: Union[str, None] = None
-    disabled: Union[bool, None] = None
+    """
+    用户
+    """
+    username: str  # 用户名
+    email: Union[str, None] = None  # 邮箱
+    full_name: Union[str, None] = None  # 全名
+    disabled: Union[bool, None] = None  # 是否激活
 
 
 class UserInDB(User):
-    hashed_password: str
+    """
+    数据库中的用户
+    """
+    hashed_password: str  # hash密码
 
 
 def verify_password(plain_password, hashed_password):
@@ -82,22 +94,27 @@ def verify_password(plain_password, hashed_password):
 
 
 def get_password_hash(password):
+    """
+    密码加密
+    :param password: 要加密的密码
+    :return: 加密后的hash密码
+    """
     return pwd_context.hash(password)
 
 
-def get_user(db, username: str):
+def get_user(db, username: str) -> UserInDB:
     """
     获取用户
-    :param db:
-    :param username:
-    :return:
+    :param db: 数据库中查询出来的用户数据
+    :param username: 用户名
+    :return: 数据库中的用户schema
     """
     if username in db:
         user_dict = db[username]
         return UserInDB(**user_dict)
 
 
-def authenticate_user(fake_db, username: str, password: str):
+def authenticate_user(fake_db, username: str, password: str) -> Union[bool, UserInDB]:
     """
     校验用户名和密码
     :param fake_db:
@@ -120,17 +137,24 @@ def create_access_token(data: dict, expires_delta: Union[timedelta, None] = None
     创建一个设置令牌过期时间的变量。
     定义一个将在令牌端点中用于响应的 Pydantic 模型。
     创建一个生成新的访问令牌的工具函数。
-    :param data:
-    :param expires_delta:
-    :return:
+    :param data: token内容
+    :param expires_delta: 过期时间
+    :return: token值
     """
+    # token数据
     to_encode = data.copy()
+
+    # 过期时间
     if expires_delta:
         expire = datetime.utcnow() + expires_delta
     else:
-        expire = datetime.utcnow() + timedelta(minutes=15)
+        expire = datetime.utcnow() + timedelta(minutes=15)  # 默认15分钟过期
     to_encode.update({"exp": expire})
+
+    # 生成token
     encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+
+    # 返回token
     return encoded_jwt
 
 
